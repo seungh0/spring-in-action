@@ -22,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import tacos.Taco;
 import tacos.Ingredient;
 import tacos.Ingredient.Type;
+import tacos.data.IngredientRepository;
+import tacos.data.TacoRepository;
 
 @Slf4j
 @Controller
@@ -29,10 +31,19 @@ import tacos.Ingredient.Type;
 @SessionAttributes("order")
 public class DesignTacoController {
 
+	private final IngredientRepository ingredientRepository;
+	private final TacoRepository tacoRepository;
+
+	public DesignTacoController(IngredientRepository ingredientRepository, TacoRepository tacoRepository) {
+		this.ingredientRepository = ingredientRepository;
+		this.tacoRepository = tacoRepository;
+	}
+
 	@GetMapping
 	public String showDesignForm(Model model) {
 
 		List<Ingredient> ingredients = new ArrayList<>();
+		ingredientRepository.findAll().forEach(ingredients::add);
 
 		Type[] types = Type.values();
 		for (Type type : types) {
@@ -68,6 +79,8 @@ public class DesignTacoController {
 		if (errors.hasErrors()) {
 			return "design";
 		}
+		Taco saved = tacoRepository.save(design);
+		order.addDesign(saved);
 		return "redirect:/orders/current";
 	}
 
