@@ -148,3 +148,168 @@ protected void configure(AuthenticationManagerBuilder auth)throws Exception{
 LDAP는 여기까지만 하고 패스....
 
 4. 커스텀 사용자 명세 서비스
+
+#### 사용자 도메인 객체와 퍼스스턴스 정의
+
+```java
+/**
+ * User 클래스는 스프링 시큐리티의 UserDetails 인터페이스를 구현.
+ */
+@Entity
+@Data
+@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
+@RequiredArgsConstructor
+public class User implements UserDetails {
+
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Long id;
+
+	private final String username;
+
+	private final String password;
+
+	private final String fullName;
+
+	private final String street;
+
+	private final String city;
+
+	private final String state;
+
+	private final String zip;
+
+	private final String phoneNumber;
+
+	/**
+	 * 해당 사용자에게 부여된 권한을 저장한 컬렉션을 반환
+	 */
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		return Arrays.asList(new SimpleGrantedAuthority("ROLE_USER"));
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		return true;
+	}
+
+}
+
+```
+
+```java
+public interface UserRepository extends CrudRepository<User, Long> {
+
+	User findByUsername(String username);
+
+}
+
+```
+
+#### 커스텀 사용자 명세 서비스 정의
+
+```java
+
+@Service // 스프링이 컴포넌트 스캔을 해준다는 것을 의미.
+public class UserRepositoryUserDetailsService implements UserDetailsService {
+
+	private final UserRepository userRepository;
+
+	// UserRepositoryUserDetailsService에 생성자를 통해 UserRepository 인스턴스가 주입된다.
+	public UserRepositoryUserDetailsService(UserRepository userRepository) {
+		this.userRepository = userRepository;
+	}
+
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		User user = userRepository.findByUsername(username); // 주입된 UserRepository 인스턴스의 findByUsername()을 호출해 User을 찾는다.
+
+		// 유저를 찾지 못했을 경우
+		if (user == null) {
+			throw new UsernameNotFoundException(String.format("User %s not found", username));
+		}
+		// 유저를 찾은 경우 유저를 반환
+		return user;
+	}
+
+}
+
+```
+
+#### Spring Security 설정
+
+```java
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+	private UserDetailsService userRepositoryUserDetailsService;
+
+	@Bean
+	public PasswordEncoder encoder() {
+		return new BCryptPasswordEncoder();
+	}
+
+	public SecurityConfig(UserDetailsService userRepositoryUserDetailsService) {
+		this.userRepositoryUserDetailsService = userRepositoryUserDetailsService;
+	}
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth
+				.userDetailsService(userRepositoryUserDetailsService)
+				.passwordEncoder(encoder()); // encoder()에 @Bean 어노테이션이 지정되었으므로, encoder() 메소드가 생성한 BCryptPasswordEncoder 인스턴스가 스프링 애플리케이션 컨텍스트에 등록, 관리되며 이 인스턴스가 애플리케이션 컨텍스트로부터 주입되어 반환 됨.
+		// 따라서 우리가 원하는 종류의 PasswordEncoder 빈 객체를 스프링의 관리하에 사용할 수 있다.
+	}
+
+}
+```
+
+#### 사용자 등록하기
+```java
+@Controller
+@RequestMapping("/register")
+public class RegistrationController {
+
+	private UserRepository userRepository;
+
+	private PasswordEncoder passwordEncoder;
+
+	public RegistrationController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+		this.userRepository = userRepository;
+		this.passwordEncoder = passwordEncoder;
+	}
+
+	@GetMapping
+	public String registerForm() {
+		return "registration";
+	}
+
+	@PostMapping
+	public String processRegistration(RegistrationForm form) {
+		userRepository.save(form.toUser(passwordEncoder));
+		return "redirect:/login";
+	}
+
+}
+``````
+```
