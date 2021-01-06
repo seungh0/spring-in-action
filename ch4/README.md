@@ -284,32 +284,94 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-#### 사용자 등록하기
+### 웹 요청 보안 처리하기
+
+- 홈페이지, 로그인 등 특정 페이지는 인증되지 않은 모든 사용자가 사용할 수 있어야 한다.
+- 이러한 보안 규칙을 구성하려면 configure(HttpSecurity http) 메소드를 오버라이딩 해야함.
+
 ```java
-@Controller
-@RequestMapping("/register")
-public class RegistrationController {
+    // HTTP 보안을 구성하는 메소드
+@Override
+protected void configure(HttpSecurity http)throws Exception{
+		...
+		}
+```
 
-	private UserRepository userRepository;
+#### HttpSecurity를 사용해서 구성할 수 있는 것
 
-	private PasswordEncoder passwordEncoder;
+- HTTP 요청 처리를 허용하기 전에 충족되어야 할 특정 보안 조건을 구성.
+- 커스텀 로그인 페이지 구성
+- 사용자가 애플리케이션의 로그아웃을 할 수 있도록 함.
+- CSRF 공격으로부터 보호하도록 구성
 
-	public RegistrationController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-		this.userRepository = userRepository;
-		this.passwordEncoder = passwordEncoder;
-	}
+```java
+    @Override
+protected void configure(HttpSecurity http)throws Exception{
+		http
+		.authorizeRequests()
+		.antMatchers("/design","orders")
+		.hasRole("ROLE_USER")
+		.antMatchers("/","/**").access("permitAll");
+		}
+```
 
-	@GetMapping
-	public String registerForm() {
-		return "registration";
-	}
+- /design, /orders의 요청은 인증된 사용자(ROLE_USER)에게만 허용되고 나머지는 모든 사용자에게 허용
+- 이런 규칙을 지정할 때는 순서가 중요함. antMatchers()에서 지정된 경로의 패턴 일치를 검사하므로 먼저 지정된 보안 규칙이 우선적으로 처리 됨.
 
-	@PostMapping
-	public String processRegistration(RegistrationForm form) {
-		userRepository.save(form.toUser(passwordEncoder));
-		return "redirect:/login";
+#### 로그인 페이지 및 로그아웃 설정
+
+```java
+@Override
+protected void configure(HttpSecurity http)throws Exception{
+		...
+		.formLogin()
+		.loginPage("/login") // 커스텀 로그인 페이지. (사용자가 인증되지 않아 로그인이 필요하다고 시큐리티가 판단할 떄 해당 경로로 연결해줌)
+		.and()
+		.logout()
+		.logoutSuccessUrl("/");
+		}
+```
+
+#### 해당 경로의 요청을 처리하는 컨트롤러 설정 (뷰 컨트롤러 설정)
+
+```java
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+	@Override
+	public void addViewControllers(ViewControllerRegistry registry) {
+		...
+		registry.addViewController("/login");
 	}
 
 }
-``````
+```
+
+#### CSRF 공격 방어
+
+- CSRF(Cross-Site Request Forgery) 보안 공격은, 사용자가 웹 사이트에 로그인 한 상태에서 악의적인 코드가 삽입된 페이지를 열명 공격 대상이 되는 웹 사이트에 자동으로 폼이 제출되고 이
+  사이트는 위조된 공격 명령이 믿을 수 있는 사용자로부터 제출된 것으로 판단하게 되어 공격에 노출됨.
+- CSRF 공격을 막기 위해 애플리케이션에서는 폼의 숨김 필드에 넣을 CSRF 토큰을 생성할 수 있다.
+- 그리고 해당 필드에 토큰을 넣은 후, 나중에 서버에서 사용한다.
+- CSRF 지원을 비활성화지 말자. (단 REST API 서버로 실행되는 애플리케이션의 경우는 CSRF를 disable 해야 함)
+
+```java
+    @Override
+protected void configure(HttpSecurity http)throws Exception{
+		...
+		.and()
+		.csrf();
+		}
+```
+
+#### CSRF 지원 비활성화
+```java
+protected void configure(HttpSecurity http)throws Exception{
+		...
+		.and()
+		.csrf()
+		.disable();
+		}
+
 ```

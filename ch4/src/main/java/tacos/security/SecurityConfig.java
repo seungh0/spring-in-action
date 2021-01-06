@@ -79,11 +79,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	protected void configure(HttpSecurity http) throws Exception {
 		http
 				.authorizeRequests()
-				.antMatchers("/design", "orders")
-				.access("hasRole('ROLE_USER')")
+				.antMatchers("/design", "orders") // /design, /orders의 요청은 인증된 사용자(ROLE_USER)에게만 허용되고 나머지는 모든 사용자에게 허용
+				.hasRole("ROLE_USER")
 				.antMatchers("/", "/**").access("permitAll")
 				.and()
-				.httpBasic();
+				.formLogin()
+				.loginPage("/login") // 커스텀 로그인 페이지. (사용자가 인증되지 않아 로그인이 필요하다고 시큐리티가 판단할 떄 해당 경로로 연결해줌)
+				.and()
+				.logout()
+				.logoutSuccessUrl("/") // 로그아웃 시 이동할 페이지
+				.and()
+				.csrf(); // CSRF 방어 지원
 	}
 
 }
