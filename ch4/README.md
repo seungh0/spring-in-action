@@ -83,54 +83,89 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     - 사용자의 추가, 삭제, 변경을 해야 한다면 보안 구성 코드를 변경한 후 애플리케이션을 다시 빌드하고 배포, 설치 해야함.
 
 ```java
-@Override
-protected void configure(AuthenticationManagerBuilder auth)throws Exception{
-		auth.inMemoryAuthentication()
-		.withUser("user1")
-		.password("{noop}password1") // {noop}를 지정하여 비밀번호를 암호화 하지 않았음.
-		.authorities("ROLE_USER") // .roles("USER")
-		.and()
-		.withUser("user2") // .withUser()로 여러 사용자를 지정할 수 있음.
-		.password("{noop}password2")
-		.authorities("ROLE_USER");
-		}
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	public SecurityConfig(UserDetailsService userRepositoryUserDetailsService) {
+		this.userRepositoryUserDetailsService = userRepositoryUserDetailsService;
+	}
+	
+    ...
+}
+
+
 ```
 
 2. JDBC 기반 사용자 스토어
 
 ```java
-@Override
-protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
 		auth
-		.jdbcAuthentication()
-		.dataSource(dataSource);
-		}
+				.jdbcAuthentication()
+				.dataSource(dataSource);
+	}
+	
+	...
+
+}
+
 
 ```
 
 ```java
-@Override
-protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
 		auth
-		.jdbcAuthentication()
-		.dataSource(dataSource)
-		.usersByUsernameQuery("select username, password, enabled from users where username=?")
-		.authoritiesByUsernameQuery("select username, authority from authorities where username=?")
-		}
+				.jdbcAuthentication()
+				.dataSource(dataSource)
+				.usersByUsernameQuery("select username, password, enabled from users where username=?")
+				.authoritiesByUsernameQuery("select username, authority from authorities where username=?")
+	}
+	
+	...
+
+}
+
 ```
 
 - 스프링 시큐리티의 것과 다른 데이터베이스를 사용한다면, 스프링 스큐리티의 SQL 쿼리를 커스터마이징 할 수 있음.
 
 ```java
-@Override
-protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
 		auth
-		.jdbcAuthentication()
-		.dataSource(dataSource)
-		.usersByUsernameQuery("select username, password, enabled from users where username=?")
-		.authoritiesByUsernameQuery("select username, authority from authorities where username=?")
-		.passwordEncoder(new BCryptPasswordEncoder()); // 비밀번호 암호화(encoder)를 지정.
-		}
+				.jdbcAuthentication()
+				.dataSource(dataSource)
+				.usersByUsernameQuery("select username, password, enabled from users where username=?")
+				.authoritiesByUsernameQuery("select username, authority from authorities where username=?")
+				.passwordEncoder(new BCryptPasswordEncoder()); // 비밀번호 암호화(encoder)를 지정.
+	}
+	...
+
+}
+
 ```
 
 - passwordEncoder() 메소드는 스프링 시큐리티의 PasswordEncoder 인터페이스를 구현하는 어떤 객체도 인자로 받을 수 있음.
@@ -292,11 +327,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 - 이러한 보안 규칙을 구성하려면 configure(HttpSecurity http) 메소드를 오버라이딩 해야함.
 
 ```java
-    // HTTP 보안을 구성하는 메소드
-@Override
-protected void configure(HttpSecurity http)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	// HTTP 보을 구성하는 메소드
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
 		...
-		}
+	}
+	...
+
+}
+
+
 ```
 
 ### HttpSecurity를 사용해서 구성할 수 있는 것
@@ -307,14 +353,24 @@ protected void configure(HttpSecurity http)throws Exception{
 - CSRF 공격으로부터 보호하도록 구성
 
 ```java
-    @Override
-protected void configure(HttpSecurity http)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
 		http
-		.authorizeRequests()
-		.antMatchers("/design","orders")
-		.hasRole("ROLE_USER")
-		.antMatchers("/","/**").access("permitAll");
-		}
+				.authorizeRequests()
+				.antMatchers("/design", "orders")
+				.hasRole("ROLE_USER")
+				.antMatchers("/", "/**").access("permitAll");
+	}
+	...
+
+}
+
 ```
 
 - /design, /orders의 요청은 인증된 사용자(ROLE_USER)에게만 허용되고 나머지는 모든 사용자에게 허용
@@ -323,15 +379,26 @@ protected void configure(HttpSecurity http)throws Exception{
 ### 로그인 페이지 및 로그아웃 설정
 
 ```java
-@Override
-protected void configure(HttpSecurity http)throws Exception{
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
 		...
 		.formLogin()
-		.loginPage("/login") // 커스텀 로그인 페이지. (사용자가 인증되지 않아 로그인이 필요하다고 시큐리티가 판단할 떄 해당 경로로 연결해줌)
-		.and()
-		.logout()
-		.logoutSuccessUrl("/");
-		}
+				.loginPage("/login") // 커스텀 로그인 페이지. (사용자가 인증되지 않아 로그인이 필요하다고 시큐리티가 판단할 떄 해당 경로로 연결해줌)
+				.and()
+				.logout()
+				.logoutSuccessUrl("/");
+	}
+	...
+
+}
+
+
 ```
 
 ### 해당 경로의 요청을 처리하는 컨트롤러 설정 (뷰 컨트롤러 설정)
@@ -357,25 +424,23 @@ public class WebConfig implements WebMvcConfigurer {
 - CSRF 공격을 막기 위해 애플리케이션에서는 폼의 숨김 필드에 넣을 CSRF 토큰을 생성할 수 있다.
 - 그리고 해당 필드에 토큰을 넣은 후, 나중에 서버에서 사용한다.
 - CSRF 지원을 비활성화지 말자. (단 REST API 서버로 실행되는 애플리케이션의 경우는 CSRF를 disable 해야 함)
+- .csrf().disable()로 비활성 가능.
 
 ```java
-    @Override
-protected void configure(HttpSecurity http)throws Exception{
-		...
-		.and()
-		.csrf();
-		}
-```
 
-### CSRF 지원 비활성화
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	...
 
-```java
-protected void configure(HttpSecurity http)throws Exception{
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
 		...
-		.and()
-		.csrf()
-		.disable();
-		}
+        .and().csrf();
+	}
+	...
+
+}
 
 ```
 
@@ -393,7 +458,7 @@ protected void configure(HttpSecurity http)throws Exception{
 public String processOrder(...Principal principal){
 		User user=userRepository.findByUsername(principal.getName());
 		order.setUesr(user):
-		}
+}
 ```
 
 - Authentication 객체를 컨트롤러 메소드에 주입
@@ -405,7 +470,7 @@ public String processOrder(...Authentication authentication){
 		User user=(User)authentication.getPrincipal();
 		...
 		order.setUser(user);
-		}
+}
 ```
 
 - @AuthenticationPrincipal 애노테이션을 메소드에 지정.
@@ -435,6 +500,7 @@ User user=(User)authentication.getPrincipal();
 ```
 
 ### 정리
+
 - 스프링 시큐리티의 자동-구성은 보안을 시작하는 데 좋은 방법임. 그러나 대부분의 애플리케이션에서는 나름의 보안 요구사항을 충족하기 위해 보안 구성이 필요하다.
 - 사용자 정보는 여러 종류의 사용자 스토어에 저장되고 관리될 수 있다. (관계형 데이터베이스, LDAP 등)
 - 스프링 시큐리티는 자동으로 CSRF 공격을 방지한다.
