@@ -34,7 +34,7 @@ public class User implements UserDetails {
 
 	private final String password;
 
-	private final String fullName;
+	private final String fullname;
 
 	private final String street;
 

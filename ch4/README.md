@@ -1,6 +1,6 @@
-# 스프링 인 액션
+# 4. 스프링 시큐리티기
 
-## 4. 스프링 시큐리티
+## 4-1. 스프링 시큐리티 활성화하기
 
 - 스프링 애플리케이션에서 스프링 시큐리티를 사용하기 위해서는 스프링 부트 스타터 시큐리티 의존성을 빌드 명세에 추가해야 한다.
 
@@ -72,6 +72,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 
 ```
+
+## 4-2. 스프링 시큐리티 구성하
 
 ### 스프링 시큐리티에서 제공하는 사용자 스토어 구성 방법
 
@@ -171,7 +173,7 @@ public class User implements UserDetails {
 
 	private final String password;
 
-	private final String fullName;
+	private final String fullname;
 
 	private final String street;
 
@@ -284,7 +286,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-### 웹 요청 보안 처리하기
+## 4-3. 웹 요청 보안 처리하기
 
 - 홈페이지, 로그인 등 특정 페이지는 인증되지 않은 모든 사용자가 사용할 수 있어야 한다.
 - 이러한 보안 규칙을 구성하려면 configure(HttpSecurity http) 메소드를 오버라이딩 해야함.
@@ -297,7 +299,7 @@ protected void configure(HttpSecurity http)throws Exception{
 		}
 ```
 
-#### HttpSecurity를 사용해서 구성할 수 있는 것
+### HttpSecurity를 사용해서 구성할 수 있는 것
 
 - HTTP 요청 처리를 허용하기 전에 충족되어야 할 특정 보안 조건을 구성.
 - 커스텀 로그인 페이지 구성
@@ -318,7 +320,7 @@ protected void configure(HttpSecurity http)throws Exception{
 - /design, /orders의 요청은 인증된 사용자(ROLE_USER)에게만 허용되고 나머지는 모든 사용자에게 허용
 - 이런 규칙을 지정할 때는 순서가 중요함. antMatchers()에서 지정된 경로의 패턴 일치를 검사하므로 먼저 지정된 보안 규칙이 우선적으로 처리 됨.
 
-#### 로그인 페이지 및 로그아웃 설정
+### 로그인 페이지 및 로그아웃 설정
 
 ```java
 @Override
@@ -332,7 +334,7 @@ protected void configure(HttpSecurity http)throws Exception{
 		}
 ```
 
-#### 해당 경로의 요청을 처리하는 컨트롤러 설정 (뷰 컨트롤러 설정)
+### 해당 경로의 요청을 처리하는 컨트롤러 설정 (뷰 컨트롤러 설정)
 
 ```java
 
@@ -348,7 +350,7 @@ public class WebConfig implements WebMvcConfigurer {
 }
 ```
 
-#### CSRF 공격 방어
+### CSRF 공격 방어
 
 - CSRF(Cross-Site Request Forgery) 보안 공격은, 사용자가 웹 사이트에 로그인 한 상태에서 악의적인 코드가 삽입된 페이지를 열명 공격 대상이 되는 웹 사이트에 자동으로 폼이 제출되고 이
   사이트는 위조된 공격 명령이 믿을 수 있는 사용자로부터 제출된 것으로 판단하게 되어 공격에 노출됨.
@@ -365,7 +367,8 @@ protected void configure(HttpSecurity http)throws Exception{
 		}
 ```
 
-#### CSRF 지원 비활성화
+### CSRF 지원 비활성화
+
 ```java
 protected void configure(HttpSecurity http)throws Exception{
 		...
@@ -375,3 +378,64 @@ protected void configure(HttpSecurity http)throws Exception{
 		}
 
 ```
+
+## 4-4. 사용자 인지하기
+
+사용자가 로그인되었음을 아는 정도로는 충분하지 않을 떄가 있다. 사용자 경험에 맞추려면 그들이 누구인지 아는 것도 중요.
+
+### 사용자가 누구인지 결정하는 방법
+
+- Principal 객체를 컨트롤러 메소드에 주입.
+    - 보안과 관련없는 코드가 혼재하는 단점
+
+```java
+@PostMapping
+public String processOrder(...Principal principal){
+		User user=userRepository.findByUsername(principal.getName());
+		order.setUesr(user):
+		}
+```
+
+- Authentication 객체를 컨트롤러 메소드에 주입
+    - getPrinciplal()은 User 타입으로 변환해야 함.
+
+```java
+@PostMapping
+public String processOrder(...Authentication authentication){
+		User user=(User)authentication.getPrincipal();
+		...
+		order.setUser(user);
+		}
+```
+
+- @AuthenticationPrincipal 애노테이션을 메소드에 지정.
+    - 타입 변환이 필요없고, Authentication과 동일하게 보안 특정 코드만 갖음.
+
+```java
+@PostMapping
+public String processOrder(@Valid Order order,Errors errors,SessionStatus sessionStatus,@AuthenticationPrincipal User user){
+		if(errors.hasErrors()){
+		return"orderForm";
+		}
+		order.setUser(user);
+		orderRepository.save(order);
+		sessionStatus.setComplete();
+
+		return"redirect:/";
+		}
+```
+
+- SecurityContextHolder를 사용해서 보안 컨텍스트를 얻는다,
+    - 보안 특정 코드가 많은 단점
+    - 컨트롤러의 처리 메소드는 물론이고, 애플리케이션의 어디서든 사용할 수 있는 장점.
+
+```java
+Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
+User user=(User)authentication.getPrincipal();
+```
+
+### 정리
+- 스프링 시큐리티의 자동-구성은 보안을 시작하는 데 좋은 방법임. 그러나 대부분의 애플리케이션에서는 나름의 보안 요구사항을 충족하기 위해 보안 구성이 필요하다.
+- 사용자 정보는 여러 종류의 사용자 스토어에 저장되고 관리될 수 있다. (관계형 데이터베이스, LDAP 등)
+- 스프링 시큐리티는 자동으로 CSRF 공격을 방지한다.
+- 인증된 사용자에 관한 정보는 SecurityContext 객체를 통해 얻거나, @AuthenticationPrincipal을 사용해서 컨트롤러에 주입하면 된다.

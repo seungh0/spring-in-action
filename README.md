@@ -2,10 +2,8 @@
 
 ### Ch1 - 스프링 기초
 
-### Ch2 - 웹 애플리케이션 개발하기 (생략)
+### Ch2 - Spring MVC
 
-### Ch3 - 데이터로 작업하기
+### Ch3 - Spring Data (JDBC, JPA)
 
-- JDBC를 사용해서 데이터 읽고 쓰기
-
-- JPA를 사용해서 데이터 읽고 쓰기
+### Ch4 - Spring Security
