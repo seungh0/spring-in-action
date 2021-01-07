@@ -1,27 +1,15 @@
-# 7. REST 서비스 사용하기
+package tacos.external;
 
-- 스프링 애플리케이션에서 API를 제공하면서 다른 애플리케이션의 API를 요청.
-- 마이크로서비스에서는 REST API를 많이 사용.
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+import tacos.domain.Ingredient;
 
-- RestTemplate
-    - 스프링 프레임워크에서 제공하는 간단하고 동기화된 REST 클라이언트.
-- Traverson
-    - 스프링 HATEOAS에서 제공하는 하이퍼링크를 인식하는 동기화 REST 클라이언트로 같은 이름의 자바스크립트 라이브러리로부터 비롯.
-- WebClient
-    - 스프링 5에서 소개된 반응형 비동기 REST 클라이언트
-
-## RestTemplate으로 REST 엔드포인트 사용.
-
-- 클라이언트 입장에서 REST 리소스와 상호작용하려면 해야 할 일이 많아서 코드가 장황해진다.
-- 저수준의 HTTP 라이브러리로 작업하면서 클라이언트는 클라이언트 인스턴스와 요청 객체를 생성하고, 해당 요청을 실행하고, 응답을 분석해 관련 되메인 객체와 연관시켜 처리해야 함.
-- 또한 발생될 수 있는 예외도 처리해야 함.
-
-- 이러한 장황한 코드를 피하기 위해 스프링은 RestTemplate을 제공.
-- RestTemplate은 REST 리소스를 사용하는 데 번잡한 일을 처리해 준다.
-
-### GET
-
-```java
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -71,22 +59,6 @@ public class TacoCloudClient {
 		return responseEntity.getBody();
 	}
 
-}
-
-```
-
-### PUT, POST, DELETE
-```java
-@Slf4j
-@Service
-public class TacoCloudClient {
-
-	private final RestTemplate restTemplate;
-
-	public TacoCloudClient(RestTemplate restTemplate) {
-		this.restTemplate = restTemplate;
-	}
-
 	public void updateIngredient(Ingredient ingredient) {
 		restTemplate.put("http://localhost:8080/ingredients/{id}", ingredient, ingredient.getId());
 	}
@@ -100,8 +72,3 @@ public class TacoCloudClient {
 	}
 
 }
-
-```
-
-## Traverson으로 REST API 사용하기
-- Traverson은 스프링 데이터 HATEOAS와 같이 제공되며, 스프링 애플리케이션에서 하이퍼미디어 API를 사용할 수 있는 솔루션.
