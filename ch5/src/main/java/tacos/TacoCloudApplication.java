@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import tacos.Ingredient.Type;
 import tacos.data.IngredientRepository;
 
@@ -15,6 +16,9 @@ public class TacoCloudApplication {
 	}
 
 	@Bean
+	@Profile("dev") // dev 프로파일이 활성화 되었을때
+//	@Profile({"dev", "qa"}) // dev, qa 프로파일 중 하나가 활성화 되었을때
+//	Profile("!prod") // prod 프로파일이 활성화 되지 않을때
 	public CommandLineRunner dataLoader(IngredientRepository repo) {
 		return new CommandLineRunner() {
 			@Override
