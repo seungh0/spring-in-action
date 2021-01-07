@@ -26,7 +26,7 @@
 		<!-- TacoCloud dependencies -->
 		<dependency>
 			<groupId>sia</groupId>
-			<artifactId>tacocloud-api1</artifactId>
+			<artifactId>tacocloud-api</artifactId>
 			<version>${tacocloud.version}</version>
 		</dependency>
 		<dependency>
