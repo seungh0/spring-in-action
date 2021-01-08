@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.actions</groupId>
-    <artifactId>tacos</artifactId>
+    <artifactId>ch1</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>tacos</name>
-    <description>Demo project for Spring Boot</description>
+    <name>ch1</name>
+    <description>Spring Introduction.</description>
 
     <properties>
         <java.version>1.8</java.version>
