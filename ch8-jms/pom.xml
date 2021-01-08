@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.actions</groupId>
-    <artifactId>ch8</artifactId>
+    <artifactId>ch8-jms</artifactId>
     <version>0.0.8-SNAPSHOT</version>
-    <name>ch8</name>
+    <name>ch8-jms</name>
     <description>Async Message</description>
 
     <properties>
