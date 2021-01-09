@@ -350,3 +350,228 @@ public class FluxMergingTests {
 
 
 ```
+
+### 리액티브 스트림의 변환과 필터링
+
+- 데이터가 스트림을 통해 흐르는 동안 일부 값을 필터링하거나 다른 값으로 변경해야 할 경우
+
+```java
+public class FluxFilteringTests {
+
+	/**
+	 * 데이터가 전달될때 맨 앞부터 원하는 개수의 항목을 무시 (skip())
+	 */
+	@Test
+	void skipAFlex() {
+		Flux<String> flux = Flux.just("A", "B", "C")
+				.skip(1); // 1개의 항목을 건너뛰고 마지막 두 항목만 발행
+
+		StepVerifier.create(flux)
+				.expectNext("B")
+				.expectNext("C")
+				.verifyComplete();
+	}
+
+	/**
+	 * 지정된 시간이 경과할 때까지 기다렸다가 소스 Flux의 항목을 방출.
+	 */
+	@Test
+	void skipAFewSeconds() {
+		Flux<String> flux = Flux.just("one", "two", "three", "four", "five", "six")
+				.delayElements(Duration.ofSeconds(1)) // 1초 동안 지연되는 Flux
+				.skip(Duration.ofSeconds(4)); // 4초 동안 기다렸다가 값을 방출하는 결과 Flux 생성
+
+		StepVerifier.create(flux)
+				.expectNext("four", "five", "six")
+				.verifyComplete();
+	}
+
+	/**
+	 * take()는 처음부터 지정된 수의 항목만을 방출.
+	 */
+	@Test
+	void take() {
+		Flux<String> flux = Flux.just("one", "two", "three", "four", "five", "six")
+				.take(3); // 처음부터 3개의 항목만을 방출.
+
+		StepVerifier.create(flux)
+				.expectNext("one", "two", "three")
+				.verifyComplete();
+	}
+
+	/**
+	 * take()도 skip()와 같이 항목 수가 아닌 경과 시간을 기준으로 하는 다른 형태를 갖는다.
+	 */
+	@Test
+	void takeSeconds() {
+		Flux<String> flux = Flux.just("one", "two", "three", "four", "five", "six")
+				.delayElements(Duration.ofSeconds(1))
+				.take(Duration.ofMillis(3500));
+
+		StepVerifier.create(flux)
+				.expectNext("one", "two", "three")
+				.verifyComplete();
+	}
+
+	/**
+	 * filter: Flux를 통해 항목을 전달할 것인가의 여부를 결정하는 조건식(Predicate)이 지정되면 filter() 오퍼레이션에서 우리가 원하는 조건을 기반으로 선택적인 발행을 할 수 있다.
+	 */
+	@Test
+	void filter() {
+		Flux<String> flux = Flux.just("one", "two", "three", "four", "five", "six")
+				.filter(np -> np.startsWith("t"));
+
+		StepVerifier.create(flux)
+				.expectNext("two", "three")
+				.verifyComplete();
+	}
+
+	/**
+	 * 이미 발행되어 수신된 항목을 필터링으로 걸러낼 필요. => distinct()
+	 */
+	@Test
+	void distinct() {
+		Flux<String> flux = Flux.just("one", "one", "two", "three", "two", "four", "five", "six")
+				.distinct();
+
+		StepVerifier.create(flux)
+				.expectNext("one", "two", "three", "four", "five", "six")
+				.verifyComplete();
+	}
+
+}
+```
+
+### 리액티브 데이터 매핑하기
+
+```java
+public class FluxMappingTests {
+
+	/**
+	 * 발행된 항목을 다른 형태나 타입으로 매핑.
+	 * cf) 각 항목이 소스 Flux로 부터 발행될 때 동기적으로 매핑이 수행된다는 것.
+	 * 따라서 비동기적으로 매핑을 수행하고 싶다면 flatMap() 오퍼레이션을 사용해야 함.
+	 */
+	@Test
+	void map() {
+		Flux<Player> playerFlux = Flux.just("Michael Jordan", "Scottile Pippen")
+				.map(n -> {
+					String[] split = n.split("\\s");
+					return new Player(split[0], split[1]);
+				});
+
+		StepVerifier.create(playerFlux)
+				.expectNext(new Player("Michael", "Jordan"))
+				.expectNext(new Player("Scottile", "Pippen"))
+				.verifyComplete();
+	}
+
+	/**
+	 * 마지막에 subscriberOn()을 호출해서 각 구독이 병렬 스레드로 수행되어야 한다는 것을 나타냄.
+	 * 따라서 다수의 입력 객체들의 map() 오퍼레이션이 비동기적으로 병행 수행될 수 있다.
+	 */
+	@Test
+	void flatMap() {
+		Flux<Player> playerFlux = Flux.just("Michael Jordan", "Scottile Pippen")
+				.flatMap(n -> Mono.just(n).map(p -> {
+					String[] split = p.split("\\s");
+					return new Player(split[0], split[1]);
+				}).subscribeOn(Schedulers.parallel()));
+
+		List<Player> playerList = Arrays.asList(new Player("Michael", "Jordan"), new Player("Scottile", "Pippen"));
+
+		StepVerifier.create(playerFlux)
+				.expectNextMatches(playerList::contains)
+				.expectNextMatches(playerList::contains)
+				.verifyComplete();
+	}
+
+	@Data
+	private static class Player {
+		private final String firstName;
+		private final String lastName;
+	}
+
+}
+```
+
+### 리액티브 스트림 데이터 버퍼링하기
+
+- Flux를 통해 전달되는 데이터를 처리하는 동안에 데이터 스트림을 작은 덩어리로 분할하면 도움이 될 수 있다.
+- 이떄 buffer() 오퍼레이션을 사용할 수 있다.
+
+```java
+public class FluxBufferTests {
+
+	@Test
+	void buffer() {
+		Flux<String> fruitFlux = Flux.just("apple", "banana", "kiwi", "orange");
+
+		Flux<List<String>> bufferedFlux = fruitFlux.buffer(2);
+
+		StepVerifier
+				.create(bufferedFlux)
+				.expectNext(Arrays.asList("apple", "banana"))
+				.expectNext(Arrays.asList("kiwi", "orange"))
+				.verifyComplete();
+	}
+
+	@Test
+	void bufferFlatMap() {
+		Flux.just("apple", "banana", "kiwi", "orange")
+				.buffer(3)
+				.flatMap(x ->
+						Flux.fromIterable(x)
+								.map(y -> y.toUpperCase())
+								.subscribeOn(Schedulers.parallel())
+								.log()
+				).subscribe();
+	}
+
+}
+
+```
+
+### 리액티브 타입에 로직 오퍼레이션 수행하기
+
+- Mono나 Flux가 발행한 항목이 어떤 조건과 일치하는지만 알아야 할 경우.
+
+```java
+public class FluxLogicTests {
+
+	/**
+	 * Flux가 발행하는 모든 문자열이 a를 포함하는지 확인
+	 */
+	@Test
+	void all() {
+		Flux<String> animalFlux = Flux.just("a", "ab", "ac");
+		Mono<Boolean> hasAMono = animalFlux.all(a -> a.contains("a"));
+
+		StepVerifier.create(hasAMono)
+				.expectNext(true)
+				.verifyComplete();
+	}
+
+	/**
+	 * 최소한 하나의 항목이 일치하는지 검사
+	 */
+	@Test
+	void any() {
+		Flux<String> animalFlux = Flux.just("a", "b", "c");
+		Mono<Boolean> hasAMono = animalFlux.any(a -> a.contains("a"));
+
+		StepVerifier.create(hasAMono)
+				.expectNext(true)
+				.verifyComplete();
+	}
+
+}
+
+```
+
+### 정리
+
+- 리액티브 프로그래밍에서는 데이터가 흘러가는 파이프라인을 생성한다.
+- 리액티브 스트림은 Publisher, Subscriber, Subscription, Transformer의 네 가지 타입을 정의
+- 프로젝트 리액터는 리액티브 스트림을 구현하며, 수많은 오퍼레이션을 제공하는 Flux와 Mono의 두 가지 타입으로 스트림을 정의한다.
+- 스프링 5는 리액터를 사용해서 리액티브 컨트롤러, 리퍼지터리, REST 클라이언트를 생성하고 다른 리액티브 프레임워크를 지원한다.
