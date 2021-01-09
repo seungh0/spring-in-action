@@ -120,3 +120,233 @@ public interface Processor<T, R> extends Subscriber<T>, Publisher<R> {
 
 - Subscriber 역할로 Processor는 데이터를 수신하고 처리한다.
 - 그 다음에 역할을 바꾸어 Publisher 역할로 처리 결과를 자신의 Subscriber들에게 발행한다.
+
+## 리액터 시작하기
+
+리액티브 프로그래밍은 일련의 작업 단계를 기술하는 것이 아니라, 데이터가 전달될 파이프라인을 구성하는 것. 그리고 이 파이프라인을 통해 데이터가 전달되는 동안 어떤 형태로든 변경 또는 사용될 수 있다.
+
+### Mono vs Flux
+
+리액터의 두 가지 핵심 타입
+
+- Mono
+    - 0, 1또는 다수의 데이터를 갖는 파이프라인
+- Flux
+    - 하나의 데이터 항목만 갖는 데이터셋에 최적화된 리액티브 타입
+
+### 리액티브 플로우의 다이어그램
+
+- 리액티브 플로우는 마블 다이어그램으로 나타내곤 한다. 마블 다이어그램의 젱리 위에는 Flux 나 Mono를 통해 전달되는 데이터의 타임라인을 나타내고, 중앙에는 오퍼레이션을 제일 밑에는 결과로 생성되는 Flux나
+  Mono의 타임라인을 나타낸다.
+
+#### 리액터 의존성 추가하기
+
+```xml
+
+<dependency>
+    <groupId>io.projectreactor</groupId>
+    <artifactId>reactor-core</artifactId>
+</dependency>
+
+<dependency>
+<groupId>io.projectreactor</groupId>
+<artifactId>reactor-test</artifactId>
+<scope>test</scope>
+</dependency> # 테스트를 지원해주는 모듈 의존성
+```
+
+- 스프링 부트는 의존성 관리를 자동으로 해주므로 해당 의존성에 <version> 요소를 지정할 필요가 없다.
+
+## 리액티브 오퍼레이션 적용하기
+
+FLux와 Mono는 리액터가 제공하는 가장 핵심적인 구성요소이다. 그리고 Flux, Mono가 제공하는 오퍼레이션들은 두 타입을 함께 결합하여 데이터가 전달될 수 있는 파이프라인을 생성한다.
+
+#### Flux, Mono 오퍼레이션 분류
+
+- 생성 오퍼레이션
+- 조합 오퍼레이션
+- 변환 오퍼레이션
+- 로직 오퍼레이션
+
+### 리액티브 타입 생성하기
+
+- 생성 오퍼레이션
+- 스프링에서 리액티브 타입을 사용할 떄는 리퍼지터리나 서비스로부터 Flux나 Mono가 제공되므로 우리의 리액티브 타입을 생성할 필요가 없다.
+- 그러나 데이터를 발행하는 새로운 리액티브 발행자를 생성해야 할 때가 있다.
+
+```java
+public class FluxCreationTests {
+
+	@Test
+	void createAFlux_just() {
+		Flux<String> fruitFlux = Flux.just("A", "B", "C", "D"); // 객체로부터 Flux 생성
+
+		fruitFlux.subscribe(System.out::println); // 구독자 추가
+
+		StepVerifier.create(fruitFlux)
+				.expectNext("A")
+				.expectNext("B")
+				.expectNext("C")
+				.expectNext("D")
+				.verifyComplete();
+	}
+
+	@Test
+	void createAFlux_fromArray() {
+		String[] fruits = new String[]{"A", "B", "C", "D"}; // 컬렉션으로부터 Flux 생성
+
+		Flux<String> fruitFlux = Flux.fromArray(fruits);
+
+		StepVerifier.create(fruitFlux)
+				.expectNext("A")
+				.expectNext("B")
+				.expectNext("C")
+				.expectNext("D")
+				.verifyComplete();
+	}
+
+	@Test
+	void createAFlux_FromIterable() {
+		List<String> fruitList = new ArrayList<>();
+		fruitList.add("A");
+		fruitList.add("B");
+		fruitList.add("C");
+
+		Flux<String> fruitFlux = Flux.fromIterable(fruitList);
+
+		StepVerifier.create(fruitFlux)
+				.expectNext("A")
+				.expectNext("B")
+				.expectNext("C")
+				.verifyComplete();
+	}
+
+	@Test
+	void createAFlux_fromStream() {
+		Stream<String> fruitStream = Stream.of("A", "B", "C");
+
+		Flux<String> fruitFlux = Flux.fromStream(fruitStream);
+
+		StepVerifier.create(fruitFlux)
+				.expectNext("A")
+				.expectNext("B")
+				.expectNext("C")
+				.verifyComplete();
+	}
+
+	@Test
+	void creatFlux_interval() {
+		Flux<Long> intervalFlux = Flux.interval(Duration.ofSeconds(1)).take(5);
+
+		StepVerifier.create(intervalFlux)
+				.expectNext(0L)
+				.expectNext(1L)
+				.expectNext(2L)
+				.expectNext(3L)
+				.expectNext(4L)
+				.verifyComplete();
+	}
+
+	@Test
+	void creatAFlux_Range() {
+		Flux<Integer> intervalFlux = Flux.range(1, 5);
+
+		StepVerifier.create(intervalFlux)
+				.expectNext(1)
+				.expectNext(2)
+				.expectNext(3)
+				.expectNext(4)
+				.expectNext(5)
+				.verifyComplete();
+	}
+
+}
+```
+
+### 리액티브 타입 조합하기
+
+두 개의 리액티브 타입을 결합해야 하거나 하나의 Flux를 두개 이상의 리액티브 타입으로 분할해야 하는 경우
+
+```java
+public class FluxMergingTests {
+
+	@Test
+	void mergeFluxes() {
+		Flux<String> characterFlux = Flux
+				.just("Garfield", "Kojak", "Barbossa")
+				.delayElements(Duration.ofMillis(500));
+		Flux<String> foodFlux = Flux
+				.just("Lasagna", "Lollipops", "Apples")
+				.delaySubscription(Duration.ofMillis(250))
+				.delayElements(Duration.ofMillis(500));
+
+		// 두개의 Flux를 조합 (단, 소스 Flux들의 값이 완벽하게 번갈아 방출되게 보장할 수 없음)
+		Flux<String> mergedFlux = characterFlux.mergeWith(foodFlux);
+
+		mergedFlux.subscribe(System.out::println);
+
+		StepVerifier.create(mergedFlux)
+				.expectNext("Garfield")
+				.expectNext("Lasagna")
+				.expectNext("Kojak")
+				.expectNext("Lollipops")
+				.expectNext("Barbossa")
+				.expectNext("Apples")
+				.verifyComplete();
+	}
+
+	@Test
+	public void zipFluxes() {
+		Flux<String> characterFlux = Flux.just("Garfield", "Kojak", "Barbossa");
+		Flux<String> foodFlux = Flux.just("Lasagna", "Lollipops", "Apples");
+
+		// 각 Flux 소스로부터 한 항목씩 번갈아 가져와 새로운 Flux를 생성
+		Flux<Tuple2<String, String>> zippedFlux = Flux.zip(characterFlux, foodFlux);
+
+		StepVerifier.create(zippedFlux)
+				.expectNextMatches(p ->
+						p.getT1().equals("Garfield") &&
+								p.getT2().equals("Lasagna"))
+				.expectNextMatches(p ->
+						p.getT1().equals("Kojak") &&
+								p.getT2().equals("Lollipops"))
+				.expectNextMatches(p ->
+						p.getT1().equals("Barbossa") &&
+								p.getT2().equals("Apples"))
+				.verifyComplete();
+	}
+
+	@Test
+	void zipFluxesToObject() {
+		Flux<String> characterFlux = Flux.just("Garfield", "Kojak", "Barbossa");
+		Flux<String> foodFlux = Flux.just("Lasagna", "Lollipops", "Apples");
+
+		Flux<String> zippedFlux = Flux.zip(characterFlux, foodFlux, (c, f) -> c + " eats " + f);
+
+		StepVerifier.create(zippedFlux)
+				.expectNext("Garfield eats Lasagna")
+				.expectNext("Kojak eats Lollipops")
+				.expectNext("Barbossa eats Apples")
+				.verifyComplete();
+	}
+
+	@Test
+	void firstFlux() {
+		Flux<String> slowFlux = Flux.just("tortoise", "snail", "sloth")
+				.delaySubscription(Duration.ofMillis(100));
+		Flux<String> fastFlux = Flux.just("hare", "cheetah", "squirrel");
+
+		// 먼저 값을 방출하는 리액티브 타입 선택
+		Flux<String> firstFlux = Flux.firstWithSignal(slowFlux, fastFlux);
+
+		StepVerifier.create(firstFlux)
+				.expectNext("hare")
+				.expectNext("cheetah")
+				.expectNext("squirrel")
+				.verifyComplete();
+	}
+
+}
+
+
+```
