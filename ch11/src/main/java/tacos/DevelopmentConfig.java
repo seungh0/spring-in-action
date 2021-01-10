@@ -4,14 +4,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import tacos.domain.Ingredient;
 import tacos.domain.Ingredient.Type;
 import tacos.data.IngredientRepository;
 import tacos.data.TacoRepository;
-import tacos.data.UserRepository;
 import tacos.domain.Taco;
-import tacos.domain.User;
 
 import java.util.Arrays;
 
@@ -20,8 +17,7 @@ import java.util.Arrays;
 public class DevelopmentConfig {
 
 	@Bean
-	public CommandLineRunner dataLoader(IngredientRepository repo,
-										UserRepository userRepo, PasswordEncoder encoder, TacoRepository tacoRepo) { // user repo for ease of testing with a built-in user
+	public CommandLineRunner dataLoader(IngredientRepository repo, TacoRepository tacoRepo) { // user repo for ease of testing with a built-in user
 		return new CommandLineRunner() {
 			@Override
 			public void run(String... args) throws Exception {
@@ -45,11 +41,6 @@ public class DevelopmentConfig {
 				repo.save(jack);
 				repo.save(salsa);
 				repo.save(sourCream);
-
-
-				userRepo.save(new User("habuma", encoder.encode("password"),
-						"Craig Walls", "123 North Street", "Cross Roads", "TX",
-						"76227", "123-123-1234"));
 
 				Taco taco1 = new Taco();
 				taco1.setName("Carnivore");
