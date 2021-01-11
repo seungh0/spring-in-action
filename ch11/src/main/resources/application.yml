@@ -1,0 +1,9 @@
+---
+spring:
+  profiles: prod
+  data:
+    mongodb:
+      host: mongodb.tacocloud.com
+      port: 27018
+      username: tacocloud
+      password: taco
